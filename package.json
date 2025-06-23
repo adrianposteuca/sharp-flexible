@@ -1,9 +1,4 @@
 
----
-
-### 3. `package.json`
-
-```json
 {
   "name": "sharp-flexible",
   "version": "1.0.0",
