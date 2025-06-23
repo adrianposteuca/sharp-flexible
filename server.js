@@ -28,29 +28,43 @@ app.post(
   ]),
   async (req, res) => {
     try {
-      console.log('🔔 Received POST /generate');
-      // Bufferele imaginilor
-      const bg   = req.files.background[0].buffer;
-      const tpl  = req.files.template[0].buffer;
-      const photos = ['photo1','photo2','photo3','photo4'].map(name => ({
-        input: req.files[name][0].buffer,
-        left:  parseInt(req.body[`${name}_x`], 10) || 0,
-        top:   parseInt(req.body[`${name}_y`], 10) || 0,
-      }));
+      // 1. Bufferele imaginilor
+      const bgBuf  = req.files.background[0].buffer;
+      const tplBuf = req.files.template[0].buffer;
+      const rawPhotos = ['photo1','photo2','photo3','photo4'].map(
+        name => req.files[name][0].buffer
+      );
 
-      // Compozitie finală (photos + template pe ultimul loc)
+      // 2. Citește meta-background (opțional, pentru slot dinamic)
+      const bgMeta = await sharp(bgBuf).metadata();
+      const slotW = Math.floor(bgMeta.width  / 2);
+      const slotH = Math.floor((bgMeta.height - 200) / 2); // dacă ai header de 200px
+
+      // 3. Redimensionează fiecare poză ca să nu depășească background-ul
+      const photos = await Promise.all(
+        rawPhotos.map(buf =>
+          sharp(buf)
+            .resize(slotW, slotH, { fit: 'cover' })
+            .toBuffer()
+        )
+      );
+
+      // 4. Pregătește array-ul de composite
       const compositeArr = [
-        ...photos,
-        { input: tpl, left: 0, top: 0 }
+        { input: photos[0], left:  50,  top:  80  },
+        { input: photos[1], left: 430,  top:  80  },
+        { input: photos[2], left:  50,  top: 480  },
+        { input: photos[3], left: 430,  top: 480  },
+        { input: tplBuf,    left:   0,  top:   0  },
       ];
 
-      // Sharp → Buffer PNG
-      const outputBuffer = await sharp(bg)
+      // 5. Aplică composite-ul
+      const outputBuffer = await sharp(bgBuf)
         .composite(compositeArr)
         .png()
         .toBuffer();
 
-      // Răspundem cu imaginea
+      // 6. Răspunde cu imaginea finală
       res.set('Content-Type', 'image/png');
       return res.send(outputBuffer);
 
@@ -62,9 +76,3 @@ app.post(
     }
   }
 );
-
-// 4) Pornim serverul
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`✅ Serverul rulează pe http://localhost:${port}`);
-});
