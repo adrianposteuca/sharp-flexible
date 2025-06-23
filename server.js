@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const multer  = require('multer');
 const sharp   = require('sharp');
@@ -7,7 +6,7 @@ const path    = require('path');
 const upload = multer();
 const app    = express();
 
-// 1) Serve static files
+// 1) Serve static din /public
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 
@@ -16,7 +15,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 3) POST /generate → primește cele 4 poze
+// 3) POST /generate → primește doar cele 4 poze
 app.post(
   '/generate',
   upload.fields([
@@ -27,17 +26,13 @@ app.post(
   ]),
   async (req, res) => {
     try {
-      console.log('🔔 Received POST /generate');
+      // 3.1) Path și metadata pentru template.png
+      const templatePath = path.join(__dirname, 'public', 'template.png');
+      const tplMeta      = await sharp(templatePath).metadata();
+      const canvasW      = tplMeta.width;
+      const canvasH      = tplMeta.height;
 
-      // Path-urile către static
-      const backgroundPath = path.join(__dirname, 'public', 'background.png');
-      const templatePath   = path.join(__dirname, 'public', 'template.png');
-
-      // Încarcă buffer-urile celor 4 poze
-      const names = ['photo1','photo2','photo3','photo4'];
-      const photosBuf = names.map(n => req.files[n][0].buffer);
-
-      // Slot-urile extrase din template
+      // 3.2) Slot-urile (coordonate + dimensiuni)
       const slots = [
         { left: 118, top:  185, width: 531, height: 637 },
         { left: 767, top:  185, width: 566, height: 637 },
@@ -45,31 +40,39 @@ app.post(
         { left: 767, top: 1140, width: 566, height: 670 },
       ];
 
-      // Redimensionează fiecare poza la dimensiunea slotului
+      // 3.3) Redimensionează cele 4 poze
+      const names = ['photo1','photo2','photo3','photo4'];
       const resized = await Promise.all(
-        photosBuf.map((buf, i) =>
-          sharp(buf)
-            .resize(slots[i].width, slots[i].height, { fit: 'cover' })
+        slots.map(({ width, height }, i) =>
+          sharp(req.files[names[i]][0].buffer)
+            .resize(width, height, { fit: 'cover' })
             .toBuffer()
         )
       );
 
-      // Construiește array-ul de composite
+      // 3.4) Construiește array-ul de compoziție:
+      //     întâi pozele, apoi template-ul peste toate
       const compositeArr = resized.map((buf, i) => ({
         input: buf,
         left:  slots[i].left,
         top:   slots[i].top,
       }));
-      // adaugă template-ul cu transparență deasupra
       compositeArr.push({ input: templatePath, left: 0, top: 0 });
 
-      // Aplică composite
-      const outputBuffer = await sharp(backgroundPath)
+      // 3.5) Crează un canvas alb, suprapune tot şi exportă PNG
+      const outputBuffer = await sharp({
+        create: {
+          width:       canvasW,
+          height:      canvasH,
+          channels:    4,
+          background:  '#ffffff',
+        }
+      })
         .composite(compositeArr)
         .png()
         .toBuffer();
 
-      // Răspunde cu PNG-ul rezultat
+      // 3.6) Trimite PNG-ul rezultat
       res.set('Content-Type', 'image/png');
       return res.send(outputBuffer);
 
