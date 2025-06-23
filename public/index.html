@@ -2,52 +2,67 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <title>Form Sharp Collage</title>
+  <title>Generează Collage</title>
   <style>
-    form { max-width: 600px; margin: auto; font-family: sans-serif; }
-    fieldset { margin-bottom: 1em; }
-    .pair { display: flex; gap: 1em; margin-top: .5em; }
-    label { flex: 1; }
-    button { padding: .5em 1em; }
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    fieldset { margin-bottom: 1.5em; padding: 1em; }
+    label { display: block; margin-bottom: 0.5em; }
+    .coords { display: flex; gap: 1em; margin-top: 0.5em; }
+    .coords label { flex: 1; }
+    button { padding: 0.5em 1em; font-size: 1em; }
   </style>
 </head>
 <body>
   <h1>Generează-ți propriul collage</h1>
   <form action="/generate" method="post" enctype="multipart/form-data">
+    <!-- Șablon -->
     <fieldset>
-      <legend>Sablon</legend>
-      <label>Background (fără alfa):
-        <input type="file" name="background" required>
+      <legend>Sablon (Background + Template)</legend>
+      <label>
+        Background (fără alfa):
+        <input type="file" name="background" accept="image/png" required>
       </label>
-      <label>Template (cu alfa):
-        <input type="file" name="template" required>
+      <label>
+        Template (cu canal alfa):
+        <input type="file" name="template" accept="image/png" required>
       </label>
     </fieldset>
 
+    <!-- Pozele și coordonatele lor -->
     <fieldset>
-      <legend>Poze</legend>
-      <script>
-        const slots = [
-          { name: 'photo1', label: 'Imagine 1 (ÎNAINTE)' },
-          { name: 'photo2', label: 'Imagine 2 (ÎNAINTE)' },
-          { name: 'photo3', label: 'Imagine 1 (DUPĂ)' },
-          { name: 'photo4', label: 'Imagine 2 (DUPĂ)' },
-        ];
-        slots.forEach(s => {
-          document.write(`
-            <fieldset>
-              <legend>${s.label}</legend>
-              <label>Fișier:
-                <input type="file" name="${s.name}" required>
-              </label>
-              <div class="pair">
-                <label>X: <input type="number" name="${s.name}_x" value="0" required></label>
-                <label>Y: <input type="number" name="${s.name}_y" value="0" required></label>
-              </div>
-            </fieldset>
-          `);
-        });
-      </script>
+      <legend>Poze (Înainte / După) și coordonate</legend>
+
+      <label>Imagine 1 (ÎNAINTE):
+        <input type="file" name="photo1" accept="image/*" required>
+      </label>
+      <div class="coords">
+        <label>X: <input type="number" name="photo1_x" value="0" required></label>
+        <label>Y: <input type="number" name="photo1_y" value="0" required></label>
+      </div>
+
+      <label>Imagine 2 (ÎNAINTE):
+        <input type="file" name="photo2" accept="image/*" required>
+      </label>
+      <div class="coords">
+        <label>X: <input type="number" name="photo2_x" value="0" required></label>
+        <label>Y: <input type="number" name="photo2_y" value="0" required></label>
+      </div>
+
+      <label>Imagine 1 (DUPĂ):
+        <input type="file" name="photo3" accept="image/*" required>
+      </label>
+      <div class="coords">
+        <label>X: <input type="number" name="photo3_x" value="0" required></label>
+        <label>Y: <input type="number" name="photo3_y" value="0" required></label>
+      </div>
+
+      <label>Imagine 2 (DUPĂ):
+        <input type="file" name="photo4" accept="image/*" required>
+      </label>
+      <div class="coords">
+        <label>X: <input type="number" name="photo4_x" value="0" required></label>
+        <label>Y: <input type="number" name="photo4_y" value="0" required></label>
+      </div>
     </fieldset>
 
     <button type="submit">Generează Collage</button>
