@@ -12,19 +12,8 @@
 </head>
 <body>
   <h1>Generează-ți propriul collage</h1>
+  <p>Background-ul și template-ul sunt preîncărcate. Încarcă doar cele 4 poze:</p>
   <form action="/generate" method="post" enctype="multipart/form-data">
-    <fieldset>
-      <legend>Sablon</legend>
-      <label>
-        Background (fără alfa):
-        <input type="file" name="background" accept="image/png" required>
-      </label>
-      <label>
-        Template (PNG cu transparență):
-        <input type="file" name="template" accept="image/png" required>
-      </label>
-    </fieldset>
-
     <fieldset>
       <legend>Poze de suprapus</legend>
       <label>Imagine 1 (ÎNAINTE):
@@ -40,7 +29,6 @@
         <input type="file" name="photo4" accept="image/*" required>
       </label>
     </fieldset>
-
     <button type="submit">Generează Collage</button>
   </form>
 </body>
