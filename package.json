@@ -1,0 +1,20 @@
+
+---
+
+### 3. `package.json`
+
+```json
+{
+  "name": "sharp-flexible",
+  "version": "1.0.0",
+  "description": "Serviciu Express + Sharp pentru colaj flexibil cu coordonate dinamice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.32.4"
+  }
+}
