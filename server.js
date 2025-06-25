@@ -1,92 +1,91 @@
 const express = require('express');
-const multer  = require('multer');
-const sharp   = require('sharp');
-const path    = require('path');
+const multer = require('multer');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs');
 
+// Folosim multer în memorie
 const upload = multer();
-const app    = express();
 
-// 1) Serve static din /public
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.urlencoded({ extended: true }));
+// Încarcă template-ul PNG cu transparență
+const templatePath = path.join(__dirname, 'static', 'template.png');
+const templateBuffer = fs.readFileSync(templatePath);
 
-// 2) GET / → index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+const app = express();
 
-// 3) POST /generate → primește doar cele 4 poze
+// Route POST /generate
+// Așteaptă 4 fișiere: photo1…photo4 + 8 câmpuri text p1Left,p1Top…p4Left,p4Top
 app.post(
   '/generate',
   upload.fields([
-    { name: 'photo1', maxCount: 1 },
-    { name: 'photo2', maxCount: 1 },
-    { name: 'photo3', maxCount: 1 },
-    { name: 'photo4', maxCount: 1 },
+    { name: 'photo1' },
+    { name: 'photo2' },
+    { name: 'photo3' },
+    { name: 'photo4' },
   ]),
   async (req, res) => {
     try {
-      // 3.1) Path și metadata pentru template.png
-      const templatePath = path.join(__dirname, 'public', 'template.png');
-      const tplMeta      = await sharp(templatePath).metadata();
-      const canvasW      = tplMeta.width;
-      const canvasH      = tplMeta.height;
+      // Parsează pozițiile din body
+      const positions = ['1','2','3','4'].map(i => ({
+        left:  parseInt(req.body[`p${i}Left`], 10)  || 0,
+        top:   parseInt(req.body[`p${i}Top`], 10)   || 0,
+      }));
 
-      // 3.2) Slot-urile (coordonate + dimensiuni)
-      const slots = [
-        { left: 118, top:  185, width: 531, height: 637 },
-        { left: 767, top:  185, width: 566, height: 637 },
-        { left: 118, top: 1140, width: 531, height: 670 },
-        { left: 767, top: 1140, width: 566, height: 670 },
-      ];
-
-      // 3.3) Redimensionează cele 4 poze
-      const names = ['photo1','photo2','photo3','photo4'];
-      const resized = await Promise.all(
-        slots.map(({ width, height }, i) =>
-          sharp(req.files[names[i]][0].buffer)
-            .resize(width, height, { fit: 'cover' })
-            .toBuffer()
-        )
+      // Buffer-urile celor 4 poze
+      const photos = ['photo1','photo2','photo3','photo4'].map(name =>
+        req.files[name][0].buffer
       );
 
-      // 3.4) Construiește array-ul de compoziție:
-      //     întâi pozele, apoi template-ul peste toate
-      const compositeArr = resized.map((buf, i) => ({
-        input: buf,
-        left:  slots[i].left,
-        top:   slots[i].top,
-      }));
-      compositeArr.push({ input: templatePath, left: 0, top: 0 });
+      // Înălțime și lățime a fiecărui „slot” (ajustează dacă e necesar)
+      const SLOT = { width: 384, height: 384 };
 
-      // 3.5) Crează un canvas alb, suprapune tot şi exportă PNG
-      const outputBuffer = await sharp({
+      // Pornim un fundal alb de dimensiunea template-ului
+      const base = sharp({
         create: {
-          width:       canvasW,
-          height:      canvasH,
-          channels:    4,
-          background:  '#ffffff',
-        }
-      })
-        .composite(compositeArr)
-        .png()
-        .toBuffer();
+          width: 1280,
+          height: 1920,
+          channels: 4,
+          background: { r: 255, g: 255, b: 255, alpha: 1 },
+        },
+      }).png();
 
-      // 3.6) Trimite PNG-ul rezultat
-      res.set('Content-Type', 'image/png');
-      return res.send(outputBuffer);
+      // Compozit: mai întâi fotografiile scalate în slot-uri
+      let pipeline = base;
+      for (let i = 0; i < 4; i++) {
+        const resized = await sharp(photos[i])
+          .resize(SLOT.width, SLOT.height, { fit: 'cover' })
+          .toBuffer();
+        pipeline = pipeline.composite([
+          {
+            input: resized,
+            left: positions[i].left,
+            top: positions[i].top,
+          },
+        ]);
+      }
+
+      // Apoi adăugăm template-ul deasupra
+      pipeline = pipeline.composite([
+        { input: templateBuffer, left: 0, top: 0 },
+      ]);
+
+      // Generăm PNG-ul final
+      const outputBuffer = await pipeline.toBuffer();
+
+      // Trimitem înapoi
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Disposition', 'attachment; filename="collage.png"');
+      res.send(outputBuffer);
 
     } catch (err) {
-      console.error('🔴 Sharp error:', err);
-      return res
-        .status(500)
-        .send(`Eroare la generarea collage-ului: ${err.message}`);
+      console.error('Eroare la generarea collage-ului:', err);
+      res.status(500).send('Eroare internă');
     }
   }
 );
 
-// 4) Pornește serverul
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`✅ Serverul rulează pe http://localhost:${port}`);
+// Pornim serverul
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Sharp collage service ascultă pe portul ${PORT}`);
 });
