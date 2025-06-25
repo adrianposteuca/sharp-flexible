@@ -1,21 +1,26 @@
-# Sharp Flexible Collage Service
+# Sharp Collage Service
 
-Un mic serviciu Express + Sharp care:
-- Primește 6 fișiere (background, template alfa, 4 poze)
-- Primește coordonatele X/Y pentru cele 4 poze
-- Generează un PNG compus și-l servește direct
+Microserviciu HTTP pentru generarea unui colaj „before/after” folosind [Sharp](https://github.com/lovell/sharp).
 
-## Fișiere
+## Endpoint
 
-- `public/form.html` – formularul web
-- `server.js`         – codul Express + Sharp
-- `package.json`      – dependințe și scripturi
-- `.gitignore`        – fișiere care nu se urcă
+### POST `/generate`
 
-## Instalare local
+- **Content-Type:** `multipart/form-data`
+- **Fields:**
+  - `photo1`, `photo2`, `photo3`, `photo4` — cele 4 imagini JPEG/PNG
+  - `p1Left`, `p1Top`, `p2Left`, `p2Top`, `p3Left`, `p3Top`, `p4Left`, `p4Top` — pozițiile în pixeli ale fiecărei poze în șablon
+
+#### Exemplu cu `curl`
 
 ```bash
-git clone https://github.com/<utilizator>/sharp-flexible.git
-cd sharp-flexible
-npm install
-npm start
+curl -X POST http://localhost:3000/generate \
+  -F "photo1=@/cale/catre/img1.jpg" \
+  -F "photo2=@/cale/catre/img2.jpg" \
+  -F "photo3=@/cale/catre/img3.jpg" \
+  -F "photo4=@/cale/catre/img4.jpg" \
+  -F "p1Left=120"  -F "p1Top=180"  \
+  -F "p2Left=788"  -F "p2Top=180"  \
+  -F "p3Left=120"  -F "p3Top=1140" \
+  -F "p4Left=788"  -F "p4Top=1140" \
+  --output collage.png
